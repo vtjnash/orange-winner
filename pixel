@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+fbdev=/dev/fb0
+width=1200
+bpp=4
+color="\x00\x00\xFF\x00" # red
+
+function pixel()
+{ xx=$1 ; yy=$2
+  printf "$color" | dd bs=$bpp seek=$(($yy * $width + $xx)) \
+                       of=$fbdev status=none #&> /dev/null
+}
+x=0 ; y=0 ; clear
+for i in {1..100}; do
+  pixel $((x++)) $((y++))
+done
