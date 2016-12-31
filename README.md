@@ -1,2 +1,1 @@
-# orange-winner
-OrangePi by Allwinner H3 miscellany
+orange-pi-plus2e.md

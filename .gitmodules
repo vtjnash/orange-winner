@@ -1,0 +1,3 @@
+[submodule "sunxi-tools"]
+	path = sunxi-tools
+	url = ./sunxi-tools/
