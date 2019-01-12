@@ -37,18 +37,12 @@ git clone git@github.com:u-boot/u-boot.git
 cd u-boot
 ```
 
-Get any patches that you're interested in and apply those.
-
-```
-git fetch git@github.com:jernejsk/u-boot.git h3_hdmi:jernejsk/h3_hdmi
-git merge jernejsk/h3_hdmi
-```
-
 In the main u-boot folder, configure u-boot for your device.
 
 ```
 ls configs # >> pick the config name that matches your device
 make orangepi_plus2e_defconfig
+apt install swig
 ```
 
 Build the u-boot image for your OrangePi.
@@ -130,24 +124,12 @@ With just this step, you should be able to turn on the card and see output on se
 Build a kernel
 --------------
 
-Many patches are upstream already, but we'll still use the development kernel since it has drivers for more devices.
+We'll use nearly a stock kernel:
 
 ```
-git clone https://github.com/linux-sunxi/linux-sunxi.git
+git clone https://github.com/torvalds/linux.git linux-sunxi
 cd linux-sunxi
 ```
-
-Next, get and apply any patches:
-
-The most up-to-date information on which devices still need patches will generally be found at http://linux-sunxi.org/Linux_mainlining_effort.
-
-Ethernet support: http://linux-sunxi.org/Sun8i_emac
-```
-git fetch https://github.com/montjoie/linux sun8i-emac-wip-v5:montjoie/sun8i-emac-wip-v5
-git merge montjoie/sun8i-emac-wip-v5
-```
-
-simplefb: http://lists.infradead.org/pipermail/linux-arm-kernel/2016-November/470703.html (requires the uboot hdmi patch listed above)
 
 Configure the kernel build:
 
@@ -155,8 +137,7 @@ Configure the kernel build:
 make sunxi_defconfig ARCH=arm
 ```
 
-This may prompt that the EMAC option is new if you applied the patch above. Select `yes`, since this is the Ethernet driver.
-The default configuration should work, but ymmv and you may want to add more functionality.
+The default configuration should work, but you will almost certainly want to add more functionality.
 
 ```
 make menuconfig ARCH=arm
@@ -165,6 +146,8 @@ make menuconfig ARCH=arm
 For example, I added `CONFIG_HIDRAW` and `CONFIG_USB_HIDDEV` (for USB keyboard support).
 
 Tip: The quickest way to do change an option is to search for it by typing `/CONFIG_HIDRAW<enter>1`, then enabling it by pressing `<space>`.
+
+I also disable HDMI and enable simplefb (including a small patch to the dtb and using an old version of u-boot).
 
 Finally, build it:
 
@@ -272,19 +255,23 @@ the existing one in the `boot` partition / folder on the SD card.
 git clone https://github.com/jwrdegoede/rtl8189ES_linux.git
 cd rtl8189ES_linux
 git checkout rtl8189fs
+# vim include/autoconf.h # set options (disable CONFIG_DEBUG)
 make -j4 ARCH=arm KSRC=<linux-sunxi>
 ```
 
-From this, we will need the `8189fs.ko` file.
+From this, we will need the `8189fs.ko`, `modules.order`, and `Module.symvers` files.
 
-Copy this file to `/lib/modules/$(uname -r)`, along with any files in `<linux-sunxi>/output/lib` (if you built any of the menuconfig options as modules).
+Test this with `insmod 8189fs.ko`, until you're satisfied this is working.
+
+Copy this file to `/lib/modules/$(uname -r)`, along with any files in `<linux-sunxi>/output/lib` (if you built any of the menuconfig options as modules),
+then run `/sbin/depmod` to enable at boot.
 
 For the Linux/GNU userspace, you'll probably want to install `iw` and `wicd` to monitor and inspect the state of this interface.
 
 Userspace graphics support
 --------------------------
 
-Install `xf86-video-fbdev`, `xorg-server`, `xorg-xinit`, and `xterm`.
+Install at minimum `xf86-video-fbdev`, `xorg-server`, `xorg-xinit`, and `xterm`.
 Then you can run `startx` to get a very basic GUI environment.
 
 
@@ -316,6 +303,8 @@ I've found that the SD card boot loader image works well enough:
 wget https://github.com/linux-sunxi/sunxi-tools/raw/master/bin/fel-sdboot.sunxi
 dd if=fel-sdboot.sunxi of=/dev/sdX bs=1024 seek=8
 ```
+
+You can also hold down the OTG button (probably will need a paperclip) when applying power (after connecting the USB OTG cable).
 
 Connect the USB OTG port (micro USB connector) to your computer and (optional) check that the device is responding:
 
