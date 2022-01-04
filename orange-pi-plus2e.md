@@ -14,18 +14,18 @@ Compile u-boot
 
 ### Download and configure toolchain ###
 
-Go to <http://www.linaro.org/downloads/>, scroll down to *Linaro Toolchain* and download the file linked next to *linaro-toolchain-binaries (little-endian)*. The file should be named something like `gcc-linaro-<version>-<date>-x86_64-arm-linux-gnueabihf.tar.xz`
+Go to <https://developer.arm.com/-/media/Files/downloads/gnu-a/10.3-2021.07/binrel/gcc-arm-10.3-2021.07-x86_64-arm-none-linux-gnueabihf.tar.xz>, pick the latest version of AArch32 target with hard float (arm-none-linux-gnueabihf). The file should be named something like `gcc-arm-<version>-<date>-x86_64-arm-linux-gnueabihf.tar.xz`
 
 Extract the content of the archive to a folder and make sure that the `bin` folder of the package is in your `PATH`. It can be added for the current session only by using:
 
 ```
-export PATH="$PATH":/home/user/folder/gcc-linaro-<VERSION>-<DATE>-x86_64_arm-linux-gnueabihf/bin/
+export PATH="$PATH":/home/user/folder/gcc-arm-<VERSION>-<DATE>-x86_64_arm-linux-gnueabihf/bin/
 ```
 
 Specify that cross compilation to ARM should be used:
 
 ```
-export CROSS_COMPILE=arm-linux-gnueabihf-
+export CROSS_COMPILE=arm-none-linux-gnueabihf-
 ```
 
 ### Download and compile U-Boot ###
@@ -42,13 +42,19 @@ In the main u-boot folder, configure u-boot for your device.
 ```
 ls configs # >> pick the config name that matches your device
 make orangepi_plus2e_defconfig
-apt install swig
+sudo apt install bc bison build-essential coccinelle \
+  device-tree-compiler dfu-util efitools flex gdisk graphviz imagemagick \
+  liblz4-tool libguestfs-tools libncurses-dev libpython3-dev libsdl2-dev \
+  libssl-dev lz4 lzma lzma-alone openssl python3 python3-coverage \
+  python3-pycryptodome python3-pyelftools python3-pytest \
+  python3-sphinxcontrib.apidoc python3-sphinx-rtd-theme python3-virtualenv \
+  swig
 ```
 
 Build the u-boot image for your OrangePi.
 
 ```
-make
+make -jN
 ```
 
 From this, we will need the `u-boot-sunxi-with-spl.bin` file and the `tools/mkimage` program.
@@ -119,7 +125,7 @@ In the main u-boot folder where you compiled u-boot you will find the bootloader
 dd if=u-boot-sunxi-with-spl.bin of=/dev/sdX bs=1024 seek=8
 ```
 
-With just this step, you should be able to turn on the card and see output on serial and hdmi (if you applied the uboot patch).
+With just this step, you should be able to turn on the card and see output on serial and hdmi.
 
 Build a kernel
 --------------
@@ -147,8 +153,6 @@ For example, I added `CONFIG_HIDRAW` and `CONFIG_USB_HIDDEV` (for USB keyboard s
 
 Tip: The quickest way to do change an option is to search for it by typing `/CONFIG_HIDRAW<enter>1`, then enabling it by pressing `<space>`.
 
-I also disable HDMI and enable simplefb (including a small patch to the dtb and using an old version of u-boot).
-
 Finally, build it:
 
 ```
@@ -156,6 +160,13 @@ make ARCH=arm
 ```
 
 From this, we will need the `arch/arm/boot/zImage` and `arch/arm/boot/dts/*.dtb` files.
+
+```
+make -j40 ARCH=arm modules_install INSTALL_MOD_PATH=~+/output
+```
+
+From this, we will need the `output/lib` folder.
+
 
 Installing the kernel
 ---------------------
@@ -238,6 +249,10 @@ pacman -Syu
 pacman -S parted dosfstools
 ```
 
+```
+dd if=u-boot-sunxi-with-spl.bin of=/dev/mmcblk2 bs=1024 seek=8
+```
+
 
 Adding Wifi support
 -------------------
@@ -250,6 +265,8 @@ This time, turn on `CONFIG_WLAN`, `CONFIG_CFG80211`, `CONFIG_MAC80211`.
 Rebuild the kernel with `make ARCH=arm`.
 This will produce a new `zImage` file that you should use to replace
 the existing one in the `boot` partition / folder on the SD card.
+
+Then in the kernel run `make ARCH=arm prepare`.
 
 ```
 git clone https://github.com/jwrdegoede/rtl8189ES_linux.git
